@@ -30,9 +30,71 @@ This project is in its **initial phase**. The current focus is on:
 - Establishing the foundational architecture and project structure.
 - Defining clear motivations and guiding principles.
 - Setting up the development environment and tooling.
-- Planning the first prototypes and experiments with secure computing techniques.
+- Implementing initial prototypes and experiments with secure computing techniques.
 
-**Status:** Exploration and design phase.
+**Status:** Active development with working examples.
+
+### Implemented Features
+
+#### Point-to-Point Variance Calculation with Homomorphic Encryption
+
+A complete working example demonstrating privacy-preserving variance calculation using the CKKS homomorphic encryption scheme.
+
+**Key Features:**
+- **SIMD Batching**: All population values encrypted in a single ciphertext for enhanced privacy.
+- **Hidden Population Size**: Prevents attackers from determining the number of individuals by counting ciphertexts.
+- **Fully Homomorphic Operations**: Variance computed entirely on encrypted data without decryption.
+- **Verifiable Results**: Plain-text comparison ensures computational correctness.
+
+**Technical Highlights:**
+- Uses Lattigo v6 library for homomorphic encryption.
+- Implements CKKS scheme for approximate arithmetic on encrypted real numbers.
+- Demonstrates rotation keys for SIMD operations.
+- Achieves high precision with minimal error (relative error < 0.000001%).
+
+**Location:** `examples/point-to-point/`
+
+**Quick Start:**
+```bash
+cd examples/point-to-point
+./run.sh
+```
+
+See `examples/point-to-point/README.md` for detailed documentation and execution instructions.
+
+## Project Structure
+
+```
+privacyLab/
+├── cmd/                    # Application entry points
+│   ├── client/            # Client application
+│   └── worker/            # Worker application
+├── examples/              # Working examples and demonstrations
+│   └── point-to-point/   # Variance calculation with homomorphic encryption
+├── internal/              # Internal packages
+│   ├── adapters/         # External interfaces and implementations
+│   ├── domain/           # Core business logic and domain models
+│   └── ports/            # Interface definitions
+├── go.mod                # Go module dependencies
+└── README.md             # This file
+```
+
+## Examples and Demonstrations
+
+### 1. Point-to-Point Variance Calculation
+
+Demonstrates privacy-preserving statistical computation using homomorphic encryption.
+
+- **Location:** `examples/point-to-point/`
+- **Technology:** CKKS homomorphic encryption (Lattigo v6)
+- **Use Case:** Calculate variance of an input value against an encrypted population
+- **Privacy Features:** SIMD batching, hidden population size, fully encrypted computation
+- **Documentation:** See `examples/point-to-point/README.md`
+
+**Run it:**
+```bash
+cd examples/point-to-point && ./run.sh
+```
 
 ## Motivations
 
