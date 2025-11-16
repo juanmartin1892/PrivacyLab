@@ -67,17 +67,144 @@ See `examples/point-to-point/README.md` for detailed documentation and execution
 ```
 privacyLab/
 ├── cmd/                    # Application entry points
-│   ├── client/            # Client application
-│   └── worker/            # Worker application
+│   ├── client/            # Client application (encryption, decryption)
+│   └── worker/            # Worker application (homomorphic computation)
 ├── examples/              # Working examples and demonstrations
 │   └── point-to-point/   # Variance calculation with homomorphic encryption
 ├── internal/              # Internal packages
-│   ├── adapters/         # External interfaces and implementations
 │   ├── domain/           # Core business logic and domain models
-│   └── ports/            # Interface definitions
+│   │   ├── computation/  # Request/response model for client-worker communication
+│   │   ├── crypto/       # Cryptographic configuration and key management
+│   │   ├── dataset/      # Dataset entity representing numerical values
+│   │   ├── errors/       # Domain-specific error definitions
+│   │   └── operation/    # Statistical operations (variance, mean, etc.)
+│   ├── ports/            # Interface definitions for infrastructure dependencies
+│   ├── adapters/         # Infrastructure adapters implementing port interfaces
+│   │   ├── lattigo/     # Lattigo v6 CKKS homomorphic encryption adapters
+│   │   └── file/        # File-based dataset readers
+│   └── services/         # Application services orchestrating domain operations
+│       ├── encrypt/     # Client-side encryption and request preparation
+│       ├── decrypt/     # Client-side decryption and verification
+│       └── process/     # Worker-side computation processing
 ├── go.mod                # Go module dependencies
 └── README.md             # This file
 ```
+
+### Domain Layer
+
+The domain layer (`internal/domain/`) contains the core business logic, completely independent of infrastructure:
+
+- **Dataset** (`internal/domain/dataset/`): Immutable collections of validated numerical values with defensive copying and invariant enforcement
+- **Operation** (`internal/domain/operation/`): Statistical operations (variance, etc.) with plaintext and encrypted computation support, including rotation key requirements
+- **Crypto** (`internal/domain/crypto/`): Cryptographic parameters, keys (secret, public, relinearization, rotation), key sets, and encrypted data with metadata
+- **Computation** (`internal/domain/computation/`): Request/response entities for distributed homomorphic computation with performance metadata tracking
+- **Errors** (`internal/domain/errors/`): Centralized domain error definitions for validation, cryptographic configuration, and computation failures
+
+All domain entities use only primitive types (no external library dependencies) and enforce invariants through validation.
+
+**Architecture Principles:**
+- Infrastructure independence: No dependencies on external libraries
+- Immutability: Entities protect internal state through defensive copying
+- Validation: All entities validate invariants at construction time
+- SOLID principles: Clear separation of concerns and single responsibilities
+
+**Client vs Worker Separation:**
+- **Client (Trusted)**: Has plaintext data, owns secret keys, encrypts datasets, decrypts results, validates computations
+- **Worker (Untrusted)**: Never sees plaintext, only has public/evaluation keys, performs homomorphic operations, returns encrypted results
+
+See `internal/domain/README.md` for detailed domain architecture documentation.
+
+### Adapter Layer
+
+The adapter layer (`internal/adapters/`) implements port interfaces using external libraries and technologies:
+
+#### Lattigo Adapters (`internal/adapters/lattigo/`)
+
+Complete implementation of cryptographic operations using Lattigo v6 CKKS scheme:
+
+- **KeyGeneratorAdapter**: Generates secret, public, relinearization, and rotation keys
+- **EncoderAdapter**: Encodes plaintext values into CKKS plaintexts with SIMD batching
+- **EncryptorAdapter**: Encrypts encoded plaintexts using public keys
+- **DecryptorAdapter**: Decrypts ciphertexts and extracts values using secret keys
+- **EvaluatorAdapter**: Performs homomorphic operations (add, sub, mul, rotate, rescale, sum slots)
+
+**Features:**
+- CKKS scheme for approximate arithmetic on encrypted real numbers
+- SIMD batching for efficient multi-value encryption
+- Support for rotation keys and slot operations
+- Automatic level and scale management
+- Serialization for network transmission and storage
+
+See `internal/adapters/lattigo/README.md` for detailed documentation.
+
+#### File Adapters (`internal/adapters/file/`)
+
+Data reading adapters for loading datasets:
+
+- **FileReaderAdapter**: Reads numerical datasets from text files and byte arrays
+  - One value per line format
+  - Comment support (lines starting with `#`)
+  - Automatic validation and parsing
+
+See `internal/adapters/file/README.md` for detailed documentation.
+
+### Services Layer
+
+The services layer (`internal/services/`) orchestrates domain logic and infrastructure components through application services:
+
+#### Encrypt Service (`internal/services/encrypt/`)
+
+Client-side service for data encryption and computation request preparation.
+
+**Responsibilities:**
+- Generate cryptographic key material
+- Encrypt datasets and individual values
+- Prepare computation requests with encrypted inputs
+- Provide public key sets for workers
+
+#### Decrypt Service (`internal/services/decrypt/`)
+
+Client-side service for result decryption and verification.
+
+**Responsibilities:**
+- Decrypt computation results from workers
+- Verify correctness against plaintext computation
+- Compute reference values for validation
+- Support result verification with configurable tolerance
+
+#### Process Service (`internal/services/process/`)
+
+Worker-side service for encrypted computation processing.
+
+**Responsibilities:**
+- Validate and execute computation requests
+- Coordinate between operations and homomorphic evaluator
+- Track performance metadata (time, operations, levels)
+- Support dynamic operation registration
+- Maintain worker identity for traceability
+
+**Design Principles:**
+- Single responsibility per service
+- Dependency inversion through port interfaces
+- Open/closed for extension through operation registration
+- Comprehensive test coverage with mocks and integration tests
+
+See `internal/services/README.md` for detailed service architecture and usage patterns.
+
+#### Ports Layer
+
+The ports layer (`internal/ports/`) defines interface contracts for infrastructure dependencies:
+
+- **KeyGenerator**: Cryptographic key generation (secret, public, relinearization, rotation)
+- **Encoder**: Plaintext encoding/decoding with SIMD batching support
+- **Encryptor**: Public key encryption with metadata tracking
+- **Decryptor**: Secret key decryption and value extraction
+- **HomomorphicEvaluator**: Homomorphic operations on encrypted data (add, sub, mul, rotate, rescale, sum slots)
+- **DataReader**: Dataset loading from external sources (files, bytes)
+
+These interfaces ensure the domain layer remains independent of specific cryptographic libraries or data sources through dependency inversion.
+
+See `internal/ports/README.md` for detailed interface specifications and usage patterns.
 
 ## Examples and Demonstrations
 
@@ -98,10 +225,91 @@ cd examples/point-to-point && ./run.sh
 
 ## Motivations
 
-- To explore in a practical way how to combine homomorphic encryption, zero-knowledge proofs and MPC to **minimize information disclosure**.
-- To understand the **performance and complexity limits** of these techniques in a controlled environment.
-- Design and document **architectural patterns** to serve as a reference for future sensitive data computing systems.
-- Build a reusable knowledge base, with clear documentation, that facilitates the introduction of new use cases or new cryptographic primitives.
+- Explore in a practical way how to combine homomorphic encryption, zero-knowledge proofs and MPC to **minimize information disclosure**
+- Understand the **performance and complexity limits** of these techniques in a controlled environment
+- Design and document **architectural patterns** to serve as a reference for future sensitive data computing systems
+- Build a reusable knowledge base, with clear documentation, that facilitates the introduction of new use cases or new cryptographic primitives
+- Apply **SOLID principles** and **Hexagonal Architecture** to create maintainable, testable, and extensible privacy-preserving systems
+
+## Testing
+
+The project includes comprehensive functional tests for all service layers to ensure code quality and consistency.
+
+### Service Tests
+
+All core services have complete test coverage with mocks and integration tests:
+
+- **Encryption Service** (`internal/services/encrypt`): Tests for dataset/value encryption, request preparation, and public key management
+- **Decryption Service** (`internal/services/decrypt`): Tests for result decryption, verification, and plaintext computation
+- **Processing Service** (`internal/services/process`): Tests for encrypted computation, operation registration, and worker management
+
+**Total Test Coverage:** 37 passing tests across all services
+
+**Run all tests:**
+```bash
+go test ./internal/services/...
+```
+
+**Run tests for a specific service:**
+```bash
+go test ./internal/services/encrypt
+go test ./internal/services/decrypt
+go test ./internal/services/process
+```
+
+### Testing Strategy
+
+The project employs comprehensive testing approaches across all layers:
+
+- **Domain Layer**: Unit tests for validation logic, property-based tests for invariants, no mocks needed (pure domain logic)
+- **Service Layer**: Functional tests with mock implementations of ports for isolation, integration tests for complete workflows
+- **Adapter Layer**: Unit tests for individual functions, integration tests with external libraries
+
+See individual package READMEs for detailed testing documentation.
+
+## Extensibility
+
+The architecture is designed to support future operations and features with minimal changes:
+
+### Adding New Statistical Operations
+
+1. Implement the `StatisticalOperation` interface in the domain layer
+2. Define plaintext computation logic
+3. Specify required rotation keys
+4. Register the operation with the process service
+
+No changes needed to existing domain entities, services, or adapters.
+
+**Example operations to implement:**
+- Mean (average) calculation
+- Standard deviation
+- Covariance between datasets
+- Linear regression
+
+### Adding New Encryption Schemes
+
+1. Define new port interfaces if needed
+2. Implement adapters for the new scheme (e.g., BFV for integers)
+3. Create parameter configurations in the crypto domain
+4. Inject new adapters into services
+
+**Potential schemes:**
+- BFV for integer arithmetic
+- TFHE for fast bootstrapping
+- BGV for modular arithmetic
+
+### Adding New Infrastructure
+
+1. Define port interface in `internal/ports/`
+2. Implement adapter in `internal/adapters/`
+3. Document usage in adapter README
+4. Inject through service constructors
+
+**Future adapters:**
+- Network communication (gRPC, REST)
+- Database storage
+- Cloud key management (KMS, HSM)
+- Distributed worker pools
 
 ## Author
 

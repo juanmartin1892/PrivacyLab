@@ -43,6 +43,7 @@
   - Use clear headings and bullet points to structure the content.
   - Explain assumptions, limitations, and security considerations.
   - If there is a readme.md create a resume and add it to the readme.md file.
+  - When documentation is required, add it to the readme.md file in the root folder or in the corresponding folder.
 
 ## Tests and examples
 
