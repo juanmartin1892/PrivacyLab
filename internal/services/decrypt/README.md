@@ -29,8 +29,8 @@ Creates a new decryption service with the required infrastructure dependencies.
 ### Methods
 
 - **DecryptResult**: Decrypts a computation result into plaintext value.
-- **VerifyResult**: Verifies encrypted result matches plaintext computation.
-- **ComputePlaintext**: Computes plaintext reference value for verification.
+- **VerifyResult**: Verifies encrypted result matches expected plaintext value within tolerance.
+- **ComputePlaintext**: Computes plaintext reference value using operation's plaintext implementation.
 
 ## Usage Example
 
@@ -40,8 +40,11 @@ decryptService := decrypt.NewService(encoder, decryptor)
 result := computation.NewResult(encryptedData, opType, requestID, metadata)
 plaintext, err := decryptService.DecryptResult(result)
 
+// Compute expected plaintext value
+expected, err := decryptService.ComputePlaintext(operation, data, params)
+
 // Verify correctness
-isValid, err := decryptService.VerifyResult(result, datasets, singleValues, tolerance)
+isValid, absoluteError, err := decryptService.VerifyResult(result, expected, tolerance)
 ```
 
 ## Architecture Notes

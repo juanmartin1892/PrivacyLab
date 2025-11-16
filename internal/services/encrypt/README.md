@@ -8,11 +8,11 @@ Transform plaintext data and computation parameters into encrypted form, ready t
 
 ## Responsibilities
 
-- Generate cryptographic key material through the key generator port.
 - Encrypt datasets and individual values using the encryptor port.
 - Encode plaintext data into CKKS format using the encoder port.
 - Prepare computation requests with all necessary encrypted inputs and public keys.
 - Support multiple operation types (variance, mean, etc.).
+- Provide public key sets for worker nodes (excluding secret keys).
 
 ## Service API
 
@@ -20,13 +20,14 @@ Transform plaintext data and computation parameters into encrypted form, ready t
 
 ```go
 NewService(
-    keyGen ports.KeyGenerator,
     encoder ports.Encoder,
     encryptor ports.Encryptor,
+    keySet *crypto.KeySet,
+    params *crypto.Parameters,
 ) *Service
 ```
 
-Creates a new encryption service with the required infrastructure dependencies.
+Creates a new encryption service with the required infrastructure dependencies and cryptographic materials.
 
 ### Methods
 
@@ -38,7 +39,7 @@ Creates a new encryption service with the required infrastructure dependencies.
 ## Usage Example
 
 ```go
-encryptService := encrypt.NewService(keyGen, encoder, encryptor)
+encryptService := encrypt.NewService(encoder, encryptor, keySet, params)
 
 dataset := dataset.NewDataset([]float64{1.0, 2.0, 3.0})
 request, err := encryptService.PrepareRequest(
@@ -48,6 +49,9 @@ request, err := encryptService.PrepareRequest(
     nil,
     "request-123",
 )
+
+// Get public keys to send to worker
+publicKeys := encryptService.GetPublicKeySet()
 ```
 
 ## Architecture Notes
@@ -61,5 +65,5 @@ request, err := encryptService.PrepareRequest(
 
 - **Decrypt Service**: Counterpart service for decrypting results.
 - **Process Service**: Worker-side service that processes encrypted requests.
-- **Domain Entities**: Uses Dataset, EncryptedData, CryptoParameters, Request.
-- **Ports**: KeyGenerator, Encoder, Encryptor.
+- **Domain Entities**: Uses Dataset, EncryptedData, CryptoParameters, Request, KeySet.
+- **Ports**: Encoder, Encryptor.

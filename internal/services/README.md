@@ -19,11 +19,11 @@ This layer follows the hexagonal architecture pattern:
 **Responsibility**: Client-side encryption of data and computation request preparation.
 
 **Main Operations**:
-- Generate cryptographic keys.
 - Encrypt datasets and values.
 - Prepare computation requests.
+- Provide public key sets for workers.
 
-**Dependencies**: KeyGenerator, Encoder, Encryptor ports.
+**Dependencies**: Encoder, Encryptor ports, KeySet, CryptoParameters.
 
 ### Decrypt Service
 
