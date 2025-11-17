@@ -54,18 +54,6 @@ func (s *Service) ProcessRequest(request *computation.Request) (*computation.Res
 		}
 	}
 
-	// Create operation parameters from request
-	params := operation.NewOperationParams()
-
-	// Copy parameters from request to operation params
-	for key, value := range request.Parameters() {
-		params.Set(key, value)
-	}
-
-	if err := op.Validate(dataSize, params); err != nil {
-		return nil, fmt.Errorf("operation validation failed: %w", err)
-	}
-
 	// Delegate to evaluator (infrastructure) to perform homomorphic computation
 	// The evaluator returns a complete result with accurate metadata including
 	// multiplications and rotations used

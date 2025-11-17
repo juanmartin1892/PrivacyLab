@@ -6,17 +6,12 @@ package operation
 type OperationType string
 
 // StatisticalOperation defines the contract for statistical computations.
-// This interface focuses purely on domain logic (mathematical operations)
-// without any infrastructure concerns like cryptographic requirements.
+// This interface focuses purely on identifying the operation type.
+// Implementation details (validation, plaintext computation, encryption logic)
+// are delegated to infrastructure adapters.
 type StatisticalOperation interface {
 	// Type returns the operation type identifier.
 	Type() OperationType
-
-	// ComputePlaintext performs the operation on unencrypted data.
-	ComputePlaintext(data []float64, params OperationParams) (float64, error)
-
-	// Validate checks if the operation can be performed with the given parameters.
-	Validate(dataSize int, params OperationParams) error
 }
 
 // OperationParams contains parameters specific to each statistical operation.

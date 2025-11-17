@@ -65,10 +65,7 @@ func (m *mockDecryptor) DecryptValue(encrypted *crypto.EncryptedData) (float64, 
 }
 
 type mockStatisticalOperation struct {
-	opType                operation.OperationType
-	computePlaintextFunc  func(data []float64, params operation.OperationParams) (float64, error)
-	requiredRotationsFunc func(dataSize int) []int
-	validateFunc          func(dataSize int, params operation.OperationParams) error
+	opType operation.OperationType
 }
 
 func (m *mockStatisticalOperation) Type() operation.OperationType {
@@ -76,27 +73,6 @@ func (m *mockStatisticalOperation) Type() operation.OperationType {
 		return m.opType
 	}
 	return operation.VarianceType
-}
-
-func (m *mockStatisticalOperation) ComputePlaintext(data []float64, params operation.OperationParams) (float64, error) {
-	if m.computePlaintextFunc != nil {
-		return m.computePlaintextFunc(data, params)
-	}
-	return 10.0, nil
-}
-
-func (m *mockStatisticalOperation) RequiredRotations(dataSize int) []int {
-	if m.requiredRotationsFunc != nil {
-		return m.requiredRotationsFunc(dataSize)
-	}
-	return []int{1, 2, 4}
-}
-
-func (m *mockStatisticalOperation) Validate(dataSize int, params operation.OperationParams) error {
-	if m.validateFunc != nil {
-		return m.validateFunc(dataSize, params)
-	}
-	return nil
 }
 
 func newTestService() (*Service, *mockEncoder, *mockDecryptor) {
@@ -286,69 +262,6 @@ func TestServiceVerifyResult(t *testing.T) {
 
 			if math.Abs(absoluteError-tt.expectedError) > 1e-9 {
 				t.Errorf("expected absolute error %f, got %f", tt.expectedError, absoluteError)
-			}
-		})
-	}
-}
-
-func TestServiceComputePlaintext(t *testing.T) {
-	tests := []struct {
-		name          string
-		data          []float64
-		params        operation.OperationParams
-		expectedValue float64
-		wantError     bool
-		errorMsg      string
-	}{
-		{
-			name:          "successful computation",
-			data:          []float64{1.0, 2.0, 3.0, 4.0, 5.0},
-			params:        operation.NewOperationParams(),
-			expectedValue: 2.0,
-			wantError:     false,
-		},
-		{
-			name:          "computation error",
-			data:          []float64{},
-			params:        operation.NewOperationParams(),
-			expectedValue: 0.0,
-			wantError:     true,
-			errorMsg:      "plaintext computation failed",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			service, _, _ := newTestService()
-
-			mockOp := &mockStatisticalOperation{
-				opType: operation.VarianceType,
-				computePlaintextFunc: func(data []float64, params operation.OperationParams) (float64, error) {
-					if len(data) == 0 {
-						return 0.0, errors.New("insufficient data")
-					}
-					return tt.expectedValue, nil
-				},
-			}
-
-			result, err := service.ComputePlaintext(mockOp, tt.data, tt.params)
-
-			if tt.wantError {
-				if err == nil {
-					t.Error("expected error but got nil")
-				}
-				if tt.errorMsg != "" && !contains(err.Error(), tt.errorMsg) {
-					t.Errorf("expected error to contain %q, got %q", tt.errorMsg, err.Error())
-				}
-				return
-			}
-
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-
-			if result != tt.expectedValue {
-				t.Errorf("expected result %f, got %f", tt.expectedValue, result)
 			}
 		})
 	}

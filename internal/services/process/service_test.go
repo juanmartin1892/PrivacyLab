@@ -100,10 +100,7 @@ func (m *mockHomomorphicEvaluator) SumSlots(ct *crypto.EncryptedData, n int) (*c
 }
 
 type mockStatisticalOperation struct {
-	opType                operation.OperationType
-	computePlaintextFunc  func(data []float64, params operation.OperationParams) (float64, error)
-	requiredRotationsFunc func(dataSize int) []int
-	validateFunc          func(dataSize int, params operation.OperationParams) error
+	opType operation.OperationType
 }
 
 func (m *mockStatisticalOperation) Type() operation.OperationType {
@@ -111,27 +108,6 @@ func (m *mockStatisticalOperation) Type() operation.OperationType {
 		return m.opType
 	}
 	return operation.VarianceType
-}
-
-func (m *mockStatisticalOperation) ComputePlaintext(data []float64, params operation.OperationParams) (float64, error) {
-	if m.computePlaintextFunc != nil {
-		return m.computePlaintextFunc(data, params)
-	}
-	return 10.0, nil
-}
-
-func (m *mockStatisticalOperation) RequiredRotations(dataSize int) []int {
-	if m.requiredRotationsFunc != nil {
-		return m.requiredRotationsFunc(dataSize)
-	}
-	return []int{1, 2, 4}
-}
-
-func (m *mockStatisticalOperation) Validate(dataSize int, params operation.OperationParams) error {
-	if m.validateFunc != nil {
-		return m.validateFunc(dataSize, params)
-	}
-	return nil
 }
 
 func newTestService() (*Service, *mockHomomorphicEvaluator) {

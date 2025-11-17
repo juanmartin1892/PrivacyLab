@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/juanmartin/privacylab/internal/domain/computation"
-	"github.com/juanmartin/privacylab/internal/domain/operation"
 	"github.com/juanmartin/privacylab/internal/ports"
 )
 
@@ -53,21 +52,6 @@ func (s *Service) VerifyResult(
 	isValid := absoluteError <= tolerance
 
 	return isValid, absoluteError, nil
-}
-
-// ComputePlaintext computes the operation in plaintext for verification.
-// This is a generic method that works with any statistical operation.
-func (s *Service) ComputePlaintext(
-	op operation.StatisticalOperation,
-	data []float64,
-	params operation.OperationParams,
-) (float64, error) {
-	result, err := op.ComputePlaintext(data, params)
-	if err != nil {
-		return 0, fmt.Errorf("plaintext computation failed: %w", err)
-	}
-
-	return result, nil
 }
 
 func abs(x float64) float64 {

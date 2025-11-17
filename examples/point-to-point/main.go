@@ -16,6 +16,21 @@ import (
 	"github.com/juanmartin/privacylab/internal/services/registry"
 )
 
+// computePlaintextVariance calculates variance in plain text for verification.
+// Variance formula: Var = (1/n) * sum((X_i - x)^2)
+// The reference value x is provided separately, followed by the population data.
+func computePlaintextVariance(referenceValue float64, population []float64) float64 {
+	n := float64(len(population))
+	sumSquaredDiff := 0.0
+
+	for _, value := range population {
+		diff := value - referenceValue
+		sumSquaredDiff += diff * diff
+	}
+
+	return sumSquaredDiff / n
+}
+
 func main() {
 	fmt.Println("=== Variance Calculation with Homomorphic Encryption ===")
 	fmt.Println("Computing variance of input x against population X using encrypted data")
@@ -88,21 +103,13 @@ func main() {
 		log.Fatalf("Error creating decryptor: %v", err)
 	}
 
-	// Create encryption service
+	// Create encryption and decryption services
 	encryptService := encrypt.NewService(encoder, encryptor, keySet, params)
-
-	// Calculate variance in plain text for verification using decrypt service
-	fmt.Println("\nCalculating variance in plain text (for verification)...")
 	decryptService := decrypt.NewService(encoder, decryptor)
-	operationParams := operation.NewOperationParams()
 
-	// Prepare data with reference value as first element followed by population
-	varianceOp := operation.NewVarianceOperation()
-	dataWithReference := append([]float64{inputX}, population...)
-	plainTextVariance, err := decryptService.ComputePlaintext(varianceOp, dataWithReference, operationParams)
-	if err != nil {
-		log.Fatalf("Error computing plaintext variance: %v", err)
-	}
+	// Calculate variance in plain text for verification
+	fmt.Println("\nCalculating variance in plain text (for verification)...")
+	plainTextVariance := computePlaintextVariance(inputX, population)
 	fmt.Printf("Plain text variance: %.6f\n", plainTextVariance)
 
 	// Prepare computation request using encryption service
