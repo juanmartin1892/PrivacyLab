@@ -63,31 +63,6 @@ func (r *Request) Parameters() map[string]interface{} {
 	return result
 }
 
-// DataSize returns the size of the dataset being processed.
-// Extracts from parameters or from first encrypted input metadata.
-func (r *Request) DataSize() int {
-	if size, exists := r.parameters["data_size"]; exists {
-		if intSize, ok := size.(int); ok {
-			return intSize
-		}
-	}
-	if len(r.encryptedInputs) > 0 {
-		return r.encryptedInputs[0].DataSize()
-	}
-	return 0
-}
-
-// OperationParams converts request parameters to operation parameters.
-func (r *Request) OperationParams() operation.OperationParams {
-	refValue := 0.0
-	if val, exists := r.parameters["reference_value"]; exists {
-		if floatVal, ok := val.(float64); ok {
-			refValue = floatVal
-		}
-	}
-	return operation.NewOperationParams(refValue)
-}
-
 func copyEncryptedDataSlice(data []*crypto.EncryptedData) []*crypto.EncryptedData {
 	result := make([]*crypto.EncryptedData, len(data))
 	copy(result, data)

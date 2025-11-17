@@ -49,7 +49,21 @@ This layer follows the hexagonal architecture pattern:
 - Execute homomorphic computations.
 - Track performance metadata.
 
-**Dependencies**: HomomorphicEvaluator port.
+**Dependencies**: HomomorphicEvaluator port, Registry service.
+
+### Registry Service
+
+**Location**: `internal/services/registry/`
+
+**Responsibility**: Centralized management of statistical operations.
+
+**Main Operations**:
+- Register statistical operations.
+- Retrieve operations by type.
+- Track supported operation types.
+- Provide default operation configurations.
+
+**Dependencies**: None (pure domain logic).
 
 ## Design Principles
 
@@ -59,6 +73,7 @@ Each service has one clear purpose:
 - Encrypt: Prepare encrypted requests.
 - Decrypt: Process encrypted results.
 - Process: Execute encrypted computations.
+- Registry: Manage statistical operations.
 
 ### Dependency Inversion
 
@@ -72,10 +87,15 @@ type Service struct {
 
 ### Open/Closed
 
-Services are open for extension (new operations) but closed for modification:
+Services are open for extension but closed for modification through registry-based operation management:
 
 ```go
-processService.RegisterOperation(newOperation)
+// Extend with new operations via registry
+registry := registry.NewService().
+    Register(operation.OperationVariance, operation.NewVarianceOperation()).
+    Register(operation.OperationMean, operation.NewMeanOperation())
+
+processService := process.NewService(evaluator, workerID, registry)
 ```
 
 ## Usage Flow
@@ -117,10 +137,17 @@ Each service has complete test coverage:
 - **Process Service Tests** (`process/service_test.go`):
   - Service creation with default operations
   - Request processing with various scenarios
-  - Dynamic operation registration
-  - Supported operations listing
+  - Supported operations listing via registry
   - Worker identification
   - End-to-end integration tests
+
+- **Registry Service Tests** (`registry/service_test.go`):
+  - Service creation and initialization
+  - Operation registration and retrieval
+  - Default operation registration
+  - Method chaining for fluent configuration
+  - Multiple registrations and overwrite behavior
+  - Supported types listing
 
 ### Running Tests
 
@@ -134,6 +161,7 @@ Run tests for a specific service:
 go test ./internal/services/encrypt
 go test ./internal/services/decrypt
 go test ./internal/services/process
+go test ./internal/services/registry
 ```
 
 Run with verbose output:
@@ -182,8 +210,12 @@ For detailed test documentation, see `docs/services-functional-tests-summary.md`
 ### Adding New Operations
 
 1. Implement `operation.StatisticalOperation` interface in domain layer.
-2. Register operation with process service: `processService.RegisterOperation(op)`.
-3. No changes needed to service code.
+2. Register operation with registry service:
+   ```go
+   registry.Register(operation.OperationMean, operation.NewMeanOperation())
+   ```
+3. Pass registry to process service constructor.
+4. No changes needed to service code.
 
 ### Adding New Ports
 

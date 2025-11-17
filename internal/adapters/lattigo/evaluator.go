@@ -79,7 +79,7 @@ func (e *EvaluatorAdapter) EvaluateOperation(
 	var err error
 
 	switch op.Type() {
-	case operation.OperationVariance:
+	case operation.VarianceType:
 		result, multiplicationsUsed, rotationsUsed, err = e.evaluateVariance(request)
 	default:
 		return nil, fmt.Errorf("unsupported operation type: %s", op.Type())
@@ -113,7 +113,14 @@ func (e *EvaluatorAdapter) evaluateVariance(request *computation.Request) (*cryp
 	encryptedPopulation := inputs[0]
 	encryptedX := inputs[1]
 
-	dataSize := request.DataSize()
+	dataSizeParam, exists := request.GetParameter("data_size")
+	if !exists {
+		return nil, 0, 0, fmt.Errorf("data_size parameter is required for variance computation")
+	}
+	dataSize, ok := dataSizeParam.(int)
+	if !ok {
+		return nil, 0, 0, fmt.Errorf("data_size parameter must be an integer")
+	}
 
 	ctPopulation, err := deserializeCiphertext(encryptedPopulation.Ciphertext())
 	if err != nil {

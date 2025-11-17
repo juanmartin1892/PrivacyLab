@@ -128,7 +128,7 @@ func TestService_PrepareRequest(t *testing.T) {
 	}{
 		{
 			name:          "successful request with dataset",
-			operationType: operation.OperationVariance,
+			operationType: operation.VarianceType,
 			datasets: func() []*dataset.Dataset {
 				ds, _ := dataset.NewDataset([]float64{1.0, 2.0, 3.0})
 				return []*dataset.Dataset{ds}
@@ -140,7 +140,7 @@ func TestService_PrepareRequest(t *testing.T) {
 		},
 		{
 			name:          "successful request with single values",
-			operationType: operation.OperationVariance,
+			operationType: operation.VarianceType,
 			datasets:      []*dataset.Dataset{},
 			singleValues:  []float64{5.0, 10.0},
 			parameters:    map[string]interface{}{},
@@ -149,7 +149,7 @@ func TestService_PrepareRequest(t *testing.T) {
 		},
 		{
 			name:          "successful request with both datasets and single values",
-			operationType: operation.OperationVariance,
+			operationType: operation.VarianceType,
 			datasets: func() []*dataset.Dataset {
 				ds, _ := dataset.NewDataset([]float64{1.0, 2.0, 3.0})
 				return []*dataset.Dataset{ds}
@@ -161,7 +161,7 @@ func TestService_PrepareRequest(t *testing.T) {
 		},
 		{
 			name:          "error encoding dataset",
-			operationType: operation.OperationVariance,
+			operationType: operation.VarianceType,
 			datasets: func() []*dataset.Dataset {
 				ds, _ := dataset.NewDataset([]float64{1.0, 2.0, 3.0})
 				return []*dataset.Dataset{ds}

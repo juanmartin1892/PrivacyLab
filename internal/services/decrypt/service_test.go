@@ -75,7 +75,7 @@ func (m *mockStatisticalOperation) Type() operation.OperationType {
 	if m.opType != "" {
 		return m.opType
 	}
-	return operation.OperationVariance
+	return operation.VarianceType
 }
 
 func (m *mockStatisticalOperation) ComputePlaintext(data []float64, params operation.OperationParams) (float64, error) {
@@ -178,7 +178,7 @@ func TestServiceDecryptResult(t *testing.T) {
 				tt.setupMock(decryptor)
 			}
 
-			result := createTestResult(tt.expectedValue, operation.OperationVariance, "test-123")
+			result := createTestResult(tt.expectedValue, operation.VarianceType, "test-123")
 
 			value, err := service.DecryptResult(result)
 
@@ -262,7 +262,7 @@ func TestServiceVerifyResult(t *testing.T) {
 				return tt.decryptedValue, nil
 			}
 
-			result := createTestResult(tt.decryptedValue, operation.OperationVariance, "test-verify")
+			result := createTestResult(tt.decryptedValue, operation.VarianceType, "test-verify")
 
 			isValid, absoluteError, err := service.VerifyResult(result, tt.plaintextValue, tt.tolerance)
 
@@ -303,14 +303,14 @@ func TestServiceComputePlaintext(t *testing.T) {
 		{
 			name:          "successful computation",
 			data:          []float64{1.0, 2.0, 3.0, 4.0, 5.0},
-			params:        operation.NewOperationParams(3.0),
+			params:        operation.NewOperationParams(),
 			expectedValue: 2.0,
 			wantError:     false,
 		},
 		{
 			name:          "computation error",
 			data:          []float64{},
-			params:        operation.NewOperationParams(0.0),
+			params:        operation.NewOperationParams(),
 			expectedValue: 0.0,
 			wantError:     true,
 			errorMsg:      "plaintext computation failed",
@@ -322,7 +322,7 @@ func TestServiceComputePlaintext(t *testing.T) {
 			service, _, _ := newTestService()
 
 			mockOp := &mockStatisticalOperation{
-				opType: operation.OperationVariance,
+				opType: operation.VarianceType,
 				computePlaintextFunc: func(data []float64, params operation.OperationParams) (float64, error) {
 					if len(data) == 0 {
 						return 0.0, errors.New("insufficient data")
@@ -365,7 +365,7 @@ func TestServiceIntegration(t *testing.T) {
 		return decryptedValue, nil
 	}
 
-	result := createTestResult(decryptedValue, operation.OperationVariance, "integration-test")
+	result := createTestResult(decryptedValue, operation.VarianceType, "integration-test")
 
 	value, err := service.DecryptResult(result)
 	if err != nil {

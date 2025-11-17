@@ -109,6 +109,7 @@ func serializeCiphertext(ct *rlwe.Ciphertext) ([]byte, error) {
 }
 
 func computeParameterHashFromCKKS(params ckks.Parameters) string {
+	// TODO: Use a proper hash function if needed
 	return fmt.Sprintf("CKKS_n%d_q%v_p%v_s%d",
 		params.LogN(),
 		params.LogQ(),

@@ -6,24 +6,29 @@ import (
 	"github.com/juanmartin/privacylab/internal/domain/computation"
 	"github.com/juanmartin/privacylab/internal/domain/operation"
 	"github.com/juanmartin/privacylab/internal/ports"
+	"github.com/juanmartin/privacylab/internal/services/registry"
 )
 
 // Service handles encrypted computation requests.
 // It coordinates between domain logic and cryptographic infrastructure.
 type Service struct {
-	evaluator  ports.HomomorphicEvaluator
-	operations map[operation.OperationType]operation.StatisticalOperation
-	workerID   string
+	evaluator ports.HomomorphicEvaluator
+	registry  *registry.Service
+	workerID  string
 }
 
 // NewService creates a new encrypted processing service.
-func NewService(evaluator ports.HomomorphicEvaluator, workerID string) *Service {
+// The registry parameter defines which operations are supported.
+// Use registry.NewService().RegisterDefaults() for standard operations.
+func NewService(evaluator ports.HomomorphicEvaluator, workerID string, operationRegistry *registry.Service) *Service {
+	if operationRegistry == nil {
+		operationRegistry = registry.NewService()
+	}
+
 	return &Service{
 		evaluator: evaluator,
-		operations: map[operation.OperationType]operation.StatisticalOperation{
-			operation.OperationVariance: operation.NewVarianceOperation(),
-		},
-		workerID: workerID,
+		registry:  operationRegistry,
+		workerID:  workerID,
 	}
 }
 
@@ -31,14 +36,31 @@ func NewService(evaluator ports.HomomorphicEvaluator, workerID string) *Service 
 // This is the main entry point for the worker application.
 func (s *Service) ProcessRequest(request *computation.Request) (*computation.Result, error) {
 	// Get operation implementation
-	op, exists := s.operations[request.OperationType()]
+	op, exists := s.registry.Get(request.OperationType())
 	if !exists {
 		return nil, fmt.Errorf("unsupported operation: %s", request.OperationType())
 	}
 
-	// Validate operation can be performed
-	dataSize := request.EncryptedInputs()[0].DataSize()
-	params := operation.NewOperationParams(0) // Will be extracted from request parameters
+	// Validate all encrypted inputs have consistent data sizes
+	inputs := request.EncryptedInputs()
+	if len(inputs) == 0 {
+		return nil, fmt.Errorf("request has no encrypted inputs")
+	}
+
+	dataSize := inputs[0].DataSize()
+	for i, input := range inputs {
+		if input.DataSize() != dataSize {
+			return nil, fmt.Errorf("input %d has inconsistent data size: expected %d, got %d", i, dataSize, input.DataSize())
+		}
+	}
+
+	// Create operation parameters from request
+	params := operation.NewOperationParams()
+
+	// Copy parameters from request to operation params
+	for key, value := range request.Parameters() {
+		params.Set(key, value)
+	}
 
 	if err := op.Validate(dataSize, params); err != nil {
 		return nil, fmt.Errorf("operation validation failed: %w", err)
@@ -55,18 +77,9 @@ func (s *Service) ProcessRequest(request *computation.Request) (*computation.Res
 	return result, nil
 }
 
-// RegisterOperation allows adding new statistical operations dynamically.
-func (s *Service) RegisterOperation(op operation.StatisticalOperation) {
-	s.operations[op.Type()] = op
-}
-
 // SupportedOperations returns the list of currently supported operations.
 func (s *Service) SupportedOperations() []operation.OperationType {
-	types := make([]operation.OperationType, 0, len(s.operations))
-	for t := range s.operations {
-		types = append(types, t)
-	}
-	return types
+	return s.registry.SupportedTypes()
 }
 
 // WorkerID returns the identifier of this worker.

@@ -203,6 +203,7 @@ func serializeGaloisKey(gk *rlwe.GaloisKey) ([]byte, error) {
 }
 
 func computeParameterHash(params *crypto.Parameters) string {
+	// TODO: Use a proper hash function if needed
 	return fmt.Sprintf("%s_n%d_q%v_p%v_s%d",
 		params.Scheme(),
 		params.LogN(),

@@ -8,6 +8,35 @@ The adapters in this package implement the ports defined in `internal/ports` usi
 
 ## Components
 
+### RotationMapper
+
+Maps statistical operations to their required rotation keys for homomorphic encryption with SIMD batching.
+
+**Features:**
+- Separates cryptographic infrastructure from domain logic
+- Provides extensible strategies for different operations
+- Supports registration of custom rotation strategies
+- Includes built-in strategies for standard operations
+
+**Usage:**
+```go
+// Create mapper with default strategies
+mapper := lattigo.NewRotationMapper()
+
+// Get rotations for variance operation
+rotations := mapper.GetRequiredRotations(operation.VarianceType, 100)
+
+// Use rotations for key generation
+keySet, _ := keyGen.GenerateKeys(params, rotations)
+
+// Register custom strategy
+customStrategy := func(dataSize int) []int {
+    // Return required rotation positions
+    return []int{1, 2, 4, 8}
+}
+mapper.Register("custom_mean", customStrategy)
+```
+
 ### KeyGeneratorAdapter
 
 Implements `ports.KeyGenerator` for generating cryptographic keys.
@@ -153,23 +182,59 @@ params, _ := crypto.NewParameters(
 )
 ```
 
-## Rotation Keys
+## Rotation Keys and SIMD Operations
 
-For variance calculation and other statistical operations, you need rotation keys for summing SIMD slots:
+The `RotationMapper` component manages rotation key requirements for different statistical operations. This separates domain logic from cryptographic infrastructure.
+
+### Using RotationMapper
+
+For variance calculation and other statistical operations that require slot rotations:
 
 ```go
-// For a dataset of size n, generate rotations 1 to n-1
-rotations := make([]int, n-1)
-for i := 1; i < n; i++ {
-    rotations[i-1] = i
-}
+// Create rotation mapper
+mapper := lattigo.NewRotationMapper()
+
+// Get required rotations for specific operation
+rotations := mapper.GetRequiredRotations(operation.VarianceType, dataSize)
+
+// Generate keys with those rotations
 keySet, _ := keygen.GenerateKeys(params, rotations)
 ```
 
-Alternatively, use power-of-2 rotations for efficient tree-based summation:
+### Built-in Rotation Strategies
+
+**Variance:** Requires rotations 1 to n-1 for summing all slots
+```go
+// For dataset of size 5
+rotations := mapper.GetRequiredRotations(operation.VarianceType, 5)
+// Returns: [1, 2, 3, 4]
+```
+
+### Custom Rotation Strategies
+
+Register custom strategies for new operations:
 
 ```go
-// More efficient for large datasets
+// Define custom operation rotation requirements
+meanStrategy := func(dataSize int) []int {
+    // Power-of-2 rotations for efficient tree-based summation
+    rotations := []int{}
+    for i := 1; i < dataSize; i *= 2 {
+        rotations = append(rotations, i)
+    }
+    return rotations
+}
+
+// Register the strategy
+mapper.Register(operation.MeanType, meanStrategy)
+```
+
+### Alternative: Power-of-2 Rotations
+
+For large datasets, power-of-2 rotations are more efficient:
+
+```go
+// More efficient for large datasets using tree-based summation
 rotations := []int{1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024}
 ```
 

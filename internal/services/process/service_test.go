@@ -8,6 +8,7 @@ import (
 	"github.com/juanmartin/privacylab/internal/domain/computation"
 	"github.com/juanmartin/privacylab/internal/domain/crypto"
 	"github.com/juanmartin/privacylab/internal/domain/operation"
+	"github.com/juanmartin/privacylab/internal/services/registry"
 )
 
 type mockHomomorphicEvaluator struct {
@@ -109,7 +110,7 @@ func (m *mockStatisticalOperation) Type() operation.OperationType {
 	if m.opType != "" {
 		return m.opType
 	}
-	return operation.OperationVariance
+	return operation.VarianceType
 }
 
 func (m *mockStatisticalOperation) ComputePlaintext(data []float64, params operation.OperationParams) (float64, error) {
@@ -135,7 +136,8 @@ func (m *mockStatisticalOperation) Validate(dataSize int, params operation.Opera
 
 func newTestService() (*Service, *mockHomomorphicEvaluator) {
 	evaluator := &mockHomomorphicEvaluator{}
-	service := NewService(evaluator, "test-worker-1")
+	reg := registry.NewService().RegisterDefaults()
+	service := NewService(evaluator, "test-worker-1", reg)
 	return service, evaluator
 }
 
@@ -161,19 +163,27 @@ func TestNewService(t *testing.T) {
 		t.Error("expected evaluator to be set")
 	}
 
-	if service.operations == nil {
-		t.Error("expected operations map to be initialized")
+	if service.registry == nil {
+		t.Error("expected registry to be initialized")
 	}
 
 	if service.workerID != "test-worker-1" {
 		t.Errorf("expected workerID to be 'test-worker-1', got %s", service.workerID)
 	}
 
-	if len(service.operations) != 1 {
-		t.Errorf("expected 1 default operation, got %d", len(service.operations))
+	supported := service.SupportedOperations()
+	if len(supported) != 1 {
+		t.Errorf("expected 1 default operation, got %d", len(supported))
 	}
 
-	if _, exists := service.operations[operation.OperationVariance]; !exists {
+	foundVariance := false
+	for _, opType := range supported {
+		if opType == operation.VarianceType {
+			foundVariance = true
+			break
+		}
+	}
+	if !foundVariance {
 		t.Error("expected variance operation to be registered by default")
 	}
 }
@@ -190,7 +200,7 @@ func TestServiceProcessRequest(t *testing.T) {
 	}{
 		{
 			name:      "successful processing",
-			opType:    operation.OperationVariance,
+			opType:    operation.VarianceType,
 			requestID: "req-001",
 			dataSize:  100,
 			setupMock: nil,
@@ -207,7 +217,7 @@ func TestServiceProcessRequest(t *testing.T) {
 		},
 		{
 			name:      "evaluation error",
-			opType:    operation.OperationVariance,
+			opType:    operation.VarianceType,
 			requestID: "req-003",
 			dataSize:  100,
 			setupMock: func(m *mockHomomorphicEvaluator) {
@@ -265,39 +275,6 @@ func TestServiceProcessRequest(t *testing.T) {
 	}
 }
 
-func TestServiceRegisterOperation(t *testing.T) {
-	service, _ := newTestService()
-
-	initialCount := len(service.operations)
-
-	customOp := &mockStatisticalOperation{
-		opType: operation.OperationType("custom_mean"),
-	}
-
-	service.RegisterOperation(customOp)
-
-	if len(service.operations) != initialCount+1 {
-		t.Errorf("expected %d operations after registration, got %d", initialCount+1, len(service.operations))
-	}
-
-	if _, exists := service.operations[operation.OperationType("custom_mean")]; !exists {
-		t.Error("expected custom operation to be registered")
-	}
-
-	replacementOp := &mockStatisticalOperation{
-		opType: operation.OperationVariance,
-		computePlaintextFunc: func(data []float64, params operation.OperationParams) (float64, error) {
-			return 999.0, nil
-		},
-	}
-
-	service.RegisterOperation(replacementOp)
-
-	if len(service.operations) != initialCount+1 {
-		t.Errorf("expected operation count to remain %d after replacement, got %d", initialCount+1, len(service.operations))
-	}
-}
-
 func TestServiceSupportedOperations(t *testing.T) {
 	service, _ := newTestService()
 
@@ -309,7 +286,7 @@ func TestServiceSupportedOperations(t *testing.T) {
 
 	foundVariance := false
 	for _, opType := range supported {
-		if opType == operation.OperationVariance {
+		if opType == operation.VarianceType {
 			foundVariance = true
 			break
 		}
@@ -318,30 +295,12 @@ func TestServiceSupportedOperations(t *testing.T) {
 	if !foundVariance {
 		t.Error("expected variance to be in supported operations")
 	}
-
-	customOp := &mockStatisticalOperation{
-		opType: operation.OperationType("custom_op"),
-	}
-	service.RegisterOperation(customOp)
-
-	supported = service.SupportedOperations()
-
-	foundCustom := false
-	for _, opType := range supported {
-		if opType == operation.OperationType("custom_op") {
-			foundCustom = true
-			break
-		}
-	}
-
-	if !foundCustom {
-		t.Error("expected custom operation to be in supported operations after registration")
-	}
 }
 
 func TestServiceWorkerID(t *testing.T) {
 	evaluator := &mockHomomorphicEvaluator{}
-	service := NewService(evaluator, "custom-worker-id")
+	reg := registry.NewService().RegisterDefaults()
+	service := NewService(evaluator, "custom-worker-id", reg)
 
 	if service.WorkerID() != "custom-worker-id" {
 		t.Errorf("expected worker ID 'custom-worker-id', got %s", service.WorkerID())
@@ -355,8 +314,8 @@ func TestServiceIntegration(t *testing.T) {
 	evaluator.evaluateOperationFunc = func(op operation.StatisticalOperation, request *computation.Request) (*computation.Result, error) {
 		callCount++
 
-		if op.Type() != operation.OperationVariance {
-			t.Errorf("expected operation type %s, got %s", operation.OperationVariance, op.Type())
+		if op.Type() != operation.VarianceType {
+			t.Errorf("expected operation type %s, got %s", operation.VarianceType, op.Type())
 		}
 
 		if request.RequestID() != "integration-test" {
@@ -379,7 +338,7 @@ func TestServiceIntegration(t *testing.T) {
 		return computation.NewResult(encryptedResult, op.Type(), request.RequestID(), resultMetadata), nil
 	}
 
-	request := createTestRequest(operation.OperationVariance, "integration-test", 100)
+	request := createTestRequest(operation.VarianceType, "integration-test", 100)
 
 	result, err := service.ProcessRequest(request)
 	if err != nil {
@@ -394,8 +353,8 @@ func TestServiceIntegration(t *testing.T) {
 		t.Fatal("expected result to be non-nil")
 	}
 
-	if result.OperationType() != operation.OperationVariance {
-		t.Errorf("expected operation type %s, got %s", operation.OperationVariance, result.OperationType())
+	if result.OperationType() != operation.VarianceType {
+		t.Errorf("expected operation type %s, got %s", operation.VarianceType, result.OperationType())
 	}
 
 	if result.RequestID() != "integration-test" {
